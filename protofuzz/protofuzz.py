@@ -28,6 +28,8 @@ Usage:
 
 '''
 
+import itertools
+
 from google.protobuf import descriptor as D
 from google.protobuf import message
 from google.protobuf.internal import containers
@@ -68,6 +70,9 @@ def _enum_generator(descriptor):
     return gen.IterValueGenerator(descriptor.name, vals)
 
 
+Blank = object()
+
+
 def _prototype_to_generator(descriptor, cls):
     'Helper to map a descriptor to a protofuzz generator'
     _fd = D.FieldDescriptor
@@ -97,8 +102,15 @@ def _prototype_to_generator(descriptor, cls):
     elif descriptor.type == _fd.TYPE_ENUM:
         generator = _enum_generator(descriptor)
     elif descriptor.type == _fd.TYPE_MESSAGE:
-        generator = descriptor_to_generator(descriptor.message_type, cls)
-        generator.set_name(descriptor.name)
+        subgen = descriptor_to_generator(descriptor.message_type, cls)
+        subgen.set_name(descriptor.name)
+        generator = gen.IterValueGenerator(
+            descriptor.name,
+            itertools.chain.from_iterable(zip(
+                subgen,
+                gen.IterValueGenerator(descriptor.name, [Blank])
+            ))
+        )
     else:
         raise RuntimeError("type {} unsupported".format(descriptor.type))
 
@@ -123,6 +135,9 @@ def descriptor_to_generator(cls_descriptor, cls, limit=0):
 
 def _assign_to_field(obj, name, val):
     'Helper to assign an arbitrary value to a protobuf field'
+    if val is Blank:
+        return
+
     target = getattr(obj, name)
 
     if isinstance(target, containers.RepeatedScalarFieldContainer):
