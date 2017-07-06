@@ -106,7 +106,7 @@ def _prototype_to_generator(descriptor, cls):
         subgen.set_name(descriptor.name)
         generator = gen.IterValueGenerator(
             descriptor.name,
-            itertools.chain.from_iterable(zip(
+            itertools.chain.from_iterable(itertools.product(
                 subgen,
                 gen.IterValueGenerator(descriptor.name, [Blank])
             ))
